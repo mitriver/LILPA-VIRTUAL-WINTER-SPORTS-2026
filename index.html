@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LILPA VIRTUAL WINTER SPORTS 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // ⚠️ 본인의 Firebase 설정값을 여기에 붙여넣으세요
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "lilpa-virtual-winter-sports.firebaseapp.com",
+            databaseURL: "https://lilpa-virtual-winter-sports-default-rtdb.firebaseio.com",
+            projectId: "lilpa-virtual-winter-sports",
+            storageBucket: "lilpa-virtual-winter-sports.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const recordsRef = ref(db, 'records');
+
+        window.saveRecord = function(e) {
+            e.preventDefault();
+            const nickname = document.getElementById('nickname').value;
+            const event = document.getElementById('event').value;
+            const score = document.getElementById('score').value;
+            const memo = document.getElementById('memo').value;
+            const date = document.getElementById('date_input').value;
+
+            if(!nickname || !score || !date) return alert('모든 정보를 입력해 주세요!');
+
+            push(recordsRef, {
+                nickname,
+                event,
+                score,
+                memo,
+                date,
+                timestamp: Date.now()
+            }).then(() => {
+                document.getElementById('recordForm').reset();
+                setTodayDate();
+                alert('레코드가 성공적으로 등록되었습니다!');
+            });
+        };
+
+        onValue(recordsRef, (snapshot) => {
+            const data = snapshot.val();
+            const recordTable = document.getElementById('recordTable');
+            recordTable.innerHTML = '';
+            
+            if (data) {
+                const items = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+                items.forEach(res => {
+                    const row = `
+                        <tr class="border-b border-gray-800 hover:bg-blue-900/10 transition-colors">
+                            <td class="py-4 px-2 text-gray-500 font-mono text-[11px]">${res.date}</td>
+                            <td class="py-4 px-2 font-bold text-blue-300">${res.nickname}</td>
+                            <td class="py-4 px-2"><span class="bg-slate-800 border border-slate-600 px-2 py-1 rounded text-[10px]">${res.event}</span></td>
+                            <td class="py-4 px-2 text-right text-yellow-400 font-bold font-orbitron">${res.score}</td>
+                            <td class="py-4 px-4 text-gray-400 text-sm truncate max-w-[150px]">${res.memo}</td>
+                        </tr>
+                    `;
+                    recordTable.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        });
+
+        window.setTodayDate = function() {
+            document.getElementById('date_input').value = new Date().toISOString().split('T')[0];
+        }
+        window.onload = setTodayDate;
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Pretendard:wght@400;700&display=swap');
+        body { background-color: #050a14; color: white; font-family: 'Pretendard', sans-serif; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .card { background: rgba(26, 31, 46, 0.9); border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.2); backdrop-filter: blur(10px); }
+        input, select { background: #1e293b !important; border: 1px solid #334155 !important; color: white !important; }
+        .btn-record { background: #2563eb; transition: all 0.2s; }
+        .btn-record:hover { background: #1d4ed8; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+    </style>
+</head>
+<body class="p-4 md:p-12">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-black font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 mb-2 tracking-tighter uppercase">
+                LILPA VIRTUAL WINTER SPORTS 2026
+            </h1>
+            <p class="text-gray-400 tracking-[0.2em] text-[10px] md:text-xs uppercase font-orbitron">Global Live Leaderboard</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div class="lg:col-span-1">
+                <div class="card p-6 sticky top-8">
+                    <h2 class="text-lg font-bold mb-6 text-blue-300 font-orbitron uppercase tracking-tight">Record Entry</h2>
+                    <form id="recordForm" onsubmit="saveRecord(event)" class="flex flex-col gap-4 text-sm">
+                        <div>
+                            <label class="text-[10px] text-gray-500 ml-1 uppercase">Nickname</label>
+                            <input type="text" id="nickname" placeholder="닉네임" required class="p-3 rounded-lg w-full mt-1">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-gray-500 ml-1 uppercase">Date</label>
+                            <input type="date" id="date_input" required class="p-3 rounded-lg w-full mt-1">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-gray-500 ml-1 uppercase">Event</label>
+                            <select id="event" class="p-3 rounded-lg w-full mt-1 text-xs">
+                                <option value="스키점프">스키점프</option>
+                                <option value="피겨스케이팅">피겨스케이팅</option>
+                                <option value="봅슬레이">봅슬레이</option>
+                                <option value="스켈레톤">스켈레톤</option>
+                                <option value="바이애슬론">바이애슬론</option>
+                                <option value="아이스골프">아이스골프</option>
+                                <option value="포인트컬링">포인트컬링</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-gray-500 ml-1 uppercase">Score</label>
+                            <input type="text" id="score" placeholder="기록 (예: 150m)" required class="p-3 rounded-lg w-full mt-1">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-gray-500 ml-1 uppercase">Memo</label>
+                            <input type="text" id="memo" placeholder="메모" class="p-3 rounded-lg w-full mt-1">
+                        </div>
+                        
+                        <button type="submit" class="btn-record text-white font-bold py-4 rounded-lg mt-4 shadow-lg active:scale-95 transition text-base uppercase tracking-widest font-bold">
+                            레코드 작성
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3">
+                <div class="card p-6 min-h-[600px]">
+                    <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                        <h2 class="text-xl font-bold text-blue-300 font-orbitron uppercase">Global History</h2>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            <span class="text-[10px] text-green-500 font-bold uppercase tracking-widest font-orbitron">Live</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-gray-500 text-xs uppercase tracking-widest border-b border-gray-800">
+                                    <th class="pb-3 px-2">Date</th>
+                                    <th class="pb-3 px-2">User</th>
+                                    <th class="pb-3 px-2">Event</th>
+                                    <th class="pb-3 px-2 text-right">Score</th>
+                                    <th class="pb-3 px-4">Memo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordTable" class="divide-y divide-gray-800/50">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
