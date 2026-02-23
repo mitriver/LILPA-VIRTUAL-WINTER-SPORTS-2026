@@ -8,7 +8,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, onValue, remove, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
@@ -24,32 +24,53 @@
         const db = getDatabase(app);
         const recordsRef = ref(db, 'records');
 
-        // 날짜 설정 함수를 전역으로 빼고 확실하게 실행되도록 수정
+        // 현재 선택된 팀 상태 (기본값)
+        let currentTeam = "팀 강만식";
+
+        // 날짜 설정
         window.setTodayDate = function() {
             const dateInput = document.getElementById('date_input');
-            if (dateInput) {
-                const now = new Date();
-                const offset = now.getTimezoneOffset() * 60000;
-                const localISOTime = (new Date(now - offset)).toISOString().split('T')[0];
-                dateInput.value = localISOTime;
-            }
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            dateInput.value = (new Date(now - offset)).toISOString().split('T')[0];
+        }
+
+        // 탭 변경 함수
+        window.changeTab = function(teamName, element) {
+            currentTeam = teamName;
+            
+            // UI 업데이트
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active-tab');
+                btn.classList.add('inactive-tab');
+            });
+            element.classList.remove('inactive-tab');
+            element.classList.add('active-tab');
+
+            // 히스토리 타이틀 변경
+            document.getElementById('history-title').innerText = `${teamName} HISTORY`;
+            
+            // 데이터 다시 불러오기
+            loadData();
         }
 
         window.saveRecord = function(e) {
             e.preventDefault();
             const nickname = document.getElementById('nickname').value;
-            const team = document.getElementById('team').value;
             const event = document.getElementById('event').value;
             const score = document.getElementById('score').value;
             const memo = document.getElementById('memo').value;
             const date = document.getElementById('date_input').value;
 
-            if(!nickname || !score || !date) return;
+            if(!nickname || !score) return;
 
-            push(recordsRef, { nickname, team, event, score, memo, date, timestamp: Date.now() })
-            .then(() => {
+            push(recordsRef, { 
+                team: currentTeam, // 현재 선택된 탭의 팀명으로 저장
+                nickname, event, score, memo, date, 
+                timestamp: Date.now() 
+            }).then(() => {
                 document.getElementById('recordForm').reset();
-                window.setTodayDate(); // 저장 후에도 다시 오늘 날짜로 세팅
+                window.setTodayDate();
             });
         };
 
@@ -57,78 +78,90 @@
             if(confirm("기록을 삭제하시겠습니까?")) remove(ref(db, `records/${recordId}`));
         }
 
-        onValue(recordsRef, (snapshot) => {
-            const data = snapshot.val();
-            const recordTable = document.getElementById('recordTable');
-            recordTable.innerHTML = '';
-            if (data) {
-                const items = Object.keys(data).map(key => ({ id: key, ...data[key] }))
-                                   .sort((a, b) => b.timestamp - a.timestamp);
-                items.forEach(res => {
-                    const row = `
-                        <tr class="border-b border-gray-800/40 hover:bg-white/5 transition-colors group">
-                            <td class="py-4 px-3 text-gray-500 font-mono text-[10px]">${res.date}</td>
-                            <td class="py-4 px-3">
-                                <div class="font-bold text-gray-200 text-sm">${res.nickname}</div>
-                                <div class="text-[9px] text-blue-400 font-black uppercase tracking-tighter">${res.team}</div>
-                            </td>
-                            <td class="py-4 px-3 text-gray-400 text-xs">${res.event}</td>
-                            <td class="py-4 px-3 text-right text-gray-200 font-bold font-orbitron text-base">${res.score}</td>
-                            <td class="py-4 px-4 text-gray-500 text-xs truncate max-w-[150px]">${res.memo}</td>
-                            <td class="py-4 px-3 text-center">
-                                <button onclick="deleteRecord('${res.id}')" class="opacity-0 group-hover:opacity-100 text-red-500/70 hover:text-red-500 text-[10px] transition">삭제</button>
-                            </td>
-                        </tr>
-                    `;
-                    recordTable.insertAdjacentHTML('beforeend', row);
-                });
-            }
-        });
+        // 데이터 로드 및 필터링
+        function loadData() {
+            onValue(recordsRef, (snapshot) => {
+                const data = snapshot.val();
+                const recordTable = document.getElementById('recordTable');
+                recordTable.innerHTML = '';
+                
+                if (data) {
+                    const items = Object.keys(data)
+                        .map(key => ({ id: key, ...data[key] }))
+                        .filter(item => item.team === currentTeam) // 현재 탭 팀만 필터링
+                        .sort((a, b) => b.timestamp - a.timestamp);
 
-        // DOM이 로드되면 즉시 실행
-        document.addEventListener('DOMContentLoaded', window.setTodayDate);
+                    items.forEach(res => {
+                        const row = `
+                            <tr class="border-b border-gray-800/40 hover:bg-white/5 transition-colors group">
+                                <td class="py-4 px-3 text-gray-500 font-mono text-[10px]">${res.date}</td>
+                                <td class="py-4 px-3 font-bold text-gray-200 text-sm">${res.nickname}</td>
+                                <td class="py-4 px-3 text-gray-400 text-xs">${res.event}</td>
+                                <td class="py-4 px-3 text-right text-yellow-400 font-bold font-orbitron text-base">${res.score}</td>
+                                <td class="py-4 px-4 text-gray-500 text-xs truncate max-w-[200px]">${res.memo}</td>
+                                <td class="py-4 px-3 text-center">
+                                    <button onclick="deleteRecord('${res.id}')" class="opacity-0 group-hover:opacity-100 text-red-500/70 hover:text-red-500 text-[10px]">삭제</button>
+                                </td>
+                            </tr>
+                        `;
+                        recordTable.insertAdjacentHTML('beforeend', row);
+                    });
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            window.setTodayDate();
+            loadData();
+        });
     </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Pretendard:wght@400;700&display=swap');
         body { background-color: #050810; color: white; font-family: 'Pretendard', sans-serif; min-height: 100vh; }
         .font-orbitron { font-family: 'Orbitron', sans-serif; }
-        .content-container { display: flex; align-items: stretch; gap: 24px; max-width: 1600px; margin: 0 auto; }
-        .card-box { background: rgba(13, 19, 33, 0.8); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 24px; }
-        .main-title { color: #83b9ff; text-shadow: 0 0 15px rgba(131, 185, 255, 0.5); letter-spacing: 0.15em; }
-        label { color: #4b5563; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
+        .main-title { color: #83b9ff; text-shadow: 0 0 15px rgba(131, 185, 255, 0.5); }
+        
+        /* 탭 스타일 */
+        .tab-container { display: flex; gap: 8px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 13px; transition: all 0.3s; cursor: pointer; border: 1px solid rgba(59, 130, 246, 0.2); font-family: 'Orbitron'; }
+        .active-tab { background: #2563eb; color: white; border-color: #3b82f6; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); }
+        .inactive-tab { background: rgba(13, 19, 33, 0.8); color: #4b5563; }
+        .inactive-tab:hover { color: #9ca3af; background: rgba(31, 41, 55, 0.8); }
+
+        /* 레이아웃 */
+        .content-container { display: flex; align-items: stretch; gap: 24px; max-width: 1600px; margin: 0 auto; height: 700px; }
+        .card-box { background: rgba(13, 19, 33, 0.8); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 24px; }
+        
+        label { color: #4b5563; font-size: 9px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; display: block; }
         input, select { background: #111827 !important; border: 1px solid #1f2937 !important; color: #d1d5db !important; padding: 12px !important; border-radius: 6px !important; font-size: 0.9rem !important; width: 100%; margin-bottom: 20px; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
-        .btn-submit { background-color: #2563eb; color: white; font-weight: 700; padding: 16px; border-radius: 6px; width: 100%; transition: all 0.2s; text-transform: uppercase; font-size: 0.95rem; margin-top: auto; }
-        .scroll-area { height: 650px; overflow-y: auto; }
+        .btn-submit { background-color: #2563eb; color: white; font-weight: 700; padding: 16px; border-radius: 6px; width: 100%; text-transform: uppercase; margin-top: auto; }
+        
+        .scroll-area { flex-grow: 1; overflow-y: auto; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 10px; }
     </style>
 </head>
 <body class="p-10">
 
-    <header class="text-center mb-12">
-        <h1 class="main-title text-5xl font-black font-orbitron uppercase leading-tight">
-            LILPA VIRTUAL WINTER SPORTS 2026
-        </h1>
-        <p class="text-gray-500 font-orbitron text-[10px] tracking-[0.4em] mt-3 uppercase">Training Leaderboard</p>
+    <header class="text-center mb-8">
+        <h1 class="main-title text-4xl font-black font-orbitron uppercase tracking-widest">LILPA VIRTUAL WINTER SPORTS 2026</h1>
     </header>
 
-    <div class="content-container">
-        <aside class="w-[340px] shrink-0">
-            <div class="card-box h-full flex flex-col border-t-2 border-t-blue-500/50">
-                <h2 class="text-xs font-black text-blue-300 font-orbitron uppercase tracking-widest mb-8">Entry</h2>
-                <form id="recordForm" onsubmit="saveRecord(event)" class="flex flex-col h-full">
-                    <label>Team</label>
-                    <select id="team">
-                        <option value="팀 강만식">팀 강만식</option>
-                        <option value="아바타요">아바타요</option>
-                        <option value="팀 고세구">팀 고세구</option>
-                        <option value="메타작버스">메타작버스</option>
-                        <option value="팀 머독">팀 머독</option>
-                        <option value="아이스틸">아이스틸</option>
-                    </select>
+    <nav class="tab-container max-w-[1600px] mx-auto">
+        <button class="tab-btn active-tab" onclick="changeTab('팀 강만식', this)">팀 강만식</button>
+        <button class="tab-btn inactive-tab" onclick="changeTab('아바타요', this)">아바타요</button>
+        <button class="tab-btn inactive-tab" onclick="changeTab('팀 고세구', this)">팀 고세구</button>
+        <button class="tab-btn inactive-tab" onclick="changeTab('메타작버스', this)">메타작버스</button>
+        <button class="tab-btn inactive-tab" onclick="changeTab('팀 머독', this)">팀 머독</button>
+        <button class="tab-btn inactive-tab" onclick="changeTab('아이스틸', this)">아이스틸</button>
+    </nav>
 
+    <div class="content-container">
+        <aside class="w-[340px] shrink-0 h-full">
+            <div class="card-box h-full flex flex-col border-t-2 border-t-blue-500/50">
+                <h2 class="text-xs font-black text-blue-300 font-orbitron uppercase tracking-widest mb-8">Record Entry</h2>
+                <form id="recordForm" onsubmit="saveRecord(event)" class="flex flex-col h-full">
                     <label>Nickname</label>
                     <input type="text" id="nickname" placeholder="닉네임 입력" required>
 
@@ -152,20 +185,16 @@
                     <label>Memo</label>
                     <input type="text" id="memo" placeholder="비고">
 
-                    <button type="submit" class="btn-submit">
-                        레코드 작성
-                    </button>
+                    <button type="submit" class="btn-submit">기록하기</button>
                 </form>
             </div>
         </aside>
 
-        <main class="grow">
+        <main class="grow h-full">
             <div class="card-box h-full flex flex-col">
                 <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
-                    <h2 class="text-sm font-black text-gray-300 font-orbitron uppercase tracking-widest">Global History</h2>
-                    <div class="flex items-center gap-2 text-[9px] text-green-500 font-black font-orbitron tracking-widest uppercase">
-                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Live Syncing
-                    </div>
+                    <h2 id="history-title" class="text-sm font-black text-gray-300 font-orbitron uppercase tracking-widest">팀 강만식 HISTORY</h2>
+                    <div class="text-[9px] text-green-500 font-black font-orbitron tracking-widest uppercase">Live Sync</div>
                 </div>
                 
                 <div class="scroll-area pr-2">
@@ -180,8 +209,7 @@
                                 <th class="pb-4 px-3 text-center">Action</th>
                             </tr>
                         </thead>
-                        <tbody id="recordTable" class="divide-y divide-gray-800/20">
-                            </tbody>
+                        <tbody id="recordTable" class="divide-y divide-gray-800/20"></tbody>
                     </table>
                 </div>
             </div>
