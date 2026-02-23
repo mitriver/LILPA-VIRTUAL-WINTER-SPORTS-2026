@@ -8,7 +8,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onValue, remove, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
@@ -24,10 +24,9 @@
         const db = getDatabase(app);
         const recordsRef = ref(db, 'records');
 
-        // 현재 선택된 팀 상태 (기본값)
-        let currentTeam = "팀 강만식";
+        // 현재 선택된 팀 상태 (업데이트된 팀명 적용)
+        let currentTeam = "만스터치";
 
-        // 날짜 설정
         window.setTodayDate = function() {
             const dateInput = document.getElementById('date_input');
             const now = new Date();
@@ -35,22 +34,15 @@
             dateInput.value = (new Date(now - offset)).toISOString().split('T')[0];
         }
 
-        // 탭 변경 함수
         window.changeTab = function(teamName, element) {
             currentTeam = teamName;
-            
-            // UI 업데이트
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active-tab');
                 btn.classList.add('inactive-tab');
             });
             element.classList.remove('inactive-tab');
             element.classList.add('active-tab');
-
-            // 히스토리 타이틀 변경
             document.getElementById('history-title').innerText = `${teamName} HISTORY`;
-            
-            // 데이터 다시 불러오기
             loadData();
         }
 
@@ -65,7 +57,7 @@
             if(!nickname || !score) return;
 
             push(recordsRef, { 
-                team: currentTeam, // 현재 선택된 탭의 팀명으로 저장
+                team: currentTeam, 
                 nickname, event, score, memo, date, 
                 timestamp: Date.now() 
             }).then(() => {
@@ -78,7 +70,6 @@
             if(confirm("기록을 삭제하시겠습니까?")) remove(ref(db, `records/${recordId}`));
         }
 
-        // 데이터 로드 및 필터링
         function loadData() {
             onValue(recordsRef, (snapshot) => {
                 const data = snapshot.val();
@@ -88,7 +79,7 @@
                 if (data) {
                     const items = Object.keys(data)
                         .map(key => ({ id: key, ...data[key] }))
-                        .filter(item => item.team === currentTeam) // 현재 탭 팀만 필터링
+                        .filter(item => item.team === currentTeam)
                         .sort((a, b) => b.timestamp - a.timestamp);
 
                     items.forEach(res => {
@@ -121,22 +112,16 @@
         body { background-color: #050810; color: white; font-family: 'Pretendard', sans-serif; min-height: 100vh; }
         .font-orbitron { font-family: 'Orbitron', sans-serif; }
         .main-title { color: #83b9ff; text-shadow: 0 0 15px rgba(131, 185, 255, 0.5); }
-        
-        /* 탭 스타일 */
         .tab-container { display: flex; gap: 8px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
         .tab-btn { padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 13px; transition: all 0.3s; cursor: pointer; border: 1px solid rgba(59, 130, 246, 0.2); font-family: 'Orbitron'; }
         .active-tab { background: #2563eb; color: white; border-color: #3b82f6; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); }
         .inactive-tab { background: rgba(13, 19, 33, 0.8); color: #4b5563; }
         .inactive-tab:hover { color: #9ca3af; background: rgba(31, 41, 55, 0.8); }
-
-        /* 레이아웃 */
         .content-container { display: flex; align-items: stretch; gap: 24px; max-width: 1600px; margin: 0 auto; height: 700px; }
         .card-box { background: rgba(13, 19, 33, 0.8); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; padding: 24px; }
-        
         label { color: #4b5563; font-size: 9px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; display: block; }
         input, select { background: #111827 !important; border: 1px solid #1f2937 !important; color: #d1d5db !important; padding: 12px !important; border-radius: 6px !important; font-size: 0.9rem !important; width: 100%; margin-bottom: 20px; }
         .btn-submit { background-color: #2563eb; color: white; font-weight: 700; padding: 16px; border-radius: 6px; width: 100%; text-transform: uppercase; margin-top: auto; }
-        
         .scroll-area { flex-grow: 1; overflow-y: auto; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 10px; }
@@ -149,7 +134,7 @@
     </header>
 
     <nav class="tab-container max-w-[1600px] mx-auto">
-        <button class="tab-btn active-tab" onclick="changeTab('팀 강만식', this)">팀 강만식</button>
+        <button class="tab-btn active-tab" onclick="changeTab('만스터치', this)">만스터치</button>
         <button class="tab-btn inactive-tab" onclick="changeTab('아바타요', this)">아바타요</button>
         <button class="tab-btn inactive-tab" onclick="changeTab('팀 고세구', this)">팀 고세구</button>
         <button class="tab-btn inactive-tab" onclick="changeTab('메타작버스', this)">메타작버스</button>
@@ -164,10 +149,8 @@
                 <form id="recordForm" onsubmit="saveRecord(event)" class="flex flex-col h-full">
                     <label>Nickname</label>
                     <input type="text" id="nickname" placeholder="닉네임 입력" required>
-
                     <label>Date</label>
                     <input type="date" id="date_input" required>
-
                     <label>Event</label>
                     <select id="event">
                         <option value="스키점프">스키점프</option>
@@ -178,13 +161,10 @@
                         <option value="아이스골프">아이스골프</option>
                         <option value="포인트컬링">포인트컬링</option>
                     </select>
-
                     <label style="color: #facc15;">Score</label>
                     <input type="text" id="score" style="border-color: #ca8a04 !important;" placeholder="기록 (예: 150m)" required>
-
                     <label>Memo</label>
                     <input type="text" id="memo" placeholder="비고">
-
                     <button type="submit" class="btn-submit">기록하기</button>
                 </form>
             </div>
@@ -193,10 +173,9 @@
         <main class="grow h-full">
             <div class="card-box h-full flex flex-col">
                 <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
-                    <h2 id="history-title" class="text-sm font-black text-gray-300 font-orbitron uppercase tracking-widest">팀 강만식 HISTORY</h2>
+                    <h2 id="history-title" class="text-sm font-black text-gray-300 font-orbitron uppercase tracking-widest">만스터치 HISTORY</h2>
                     <div class="text-[9px] text-green-500 font-black font-orbitron tracking-widest uppercase">Live Sync</div>
                 </div>
-                
                 <div class="scroll-area pr-2">
                     <table class="w-full text-left">
                         <thead class="sticky top-0 bg-[#0d1321] z-10">
