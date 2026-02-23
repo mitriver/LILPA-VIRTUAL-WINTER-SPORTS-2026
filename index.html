@@ -24,6 +24,17 @@
         const db = getDatabase(app);
         const recordsRef = ref(db, 'records');
 
+        // 날짜 설정 함수를 전역으로 빼고 확실하게 실행되도록 수정
+        window.setTodayDate = function() {
+            const dateInput = document.getElementById('date_input');
+            if (dateInput) {
+                const now = new Date();
+                const offset = now.getTimezoneOffset() * 60000;
+                const localISOTime = (new Date(now - offset)).toISOString().split('T')[0];
+                dateInput.value = localISOTime;
+            }
+        }
+
         window.saveRecord = function(e) {
             e.preventDefault();
             const nickname = document.getElementById('nickname').value;
@@ -38,7 +49,7 @@
             push(recordsRef, { nickname, team, event, score, memo, date, timestamp: Date.now() })
             .then(() => {
                 document.getElementById('recordForm').reset();
-                setTodayDate();
+                window.setTodayDate(); // 저장 후에도 다시 오늘 날짜로 세팅
             });
         };
 
@@ -74,69 +85,22 @@
             }
         });
 
-        window.setTodayDate = function() {
-            document.getElementById('date_input').value = new Date().toISOString().split('T')[0];
-        }
-        window.onload = setTodayDate;
+        // DOM이 로드되면 즉시 실행
+        document.addEventListener('DOMContentLoaded', window.setTodayDate);
     </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Pretendard:wght@400;700&display=swap');
-        
         body { background-color: #050810; color: white; font-family: 'Pretendard', sans-serif; min-height: 100vh; }
         .font-orbitron { font-family: 'Orbitron', sans-serif; }
-        
-        /* 메인 컨테이너: 히스토리 높이에 맞춰서 정렬 */
-        .content-container {
-            display: flex;
-            align-items: stretch; /* 이 설정이 양쪽 박스 높이를 똑같이 맞춥니다 */
-            gap: 24px;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
-
-        .card-box { 
-            background: rgba(13, 19, 33, 0.8); 
-            border: 1px solid rgba(59, 130, 246, 0.15); 
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            padding: 24px;
-        }
-
+        .content-container { display: flex; align-items: stretch; gap: 24px; max-width: 1600px; margin: 0 auto; }
+        .card-box { background: rgba(13, 19, 33, 0.8); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 24px; }
         .main-title { color: #83b9ff; text-shadow: 0 0 15px rgba(131, 185, 255, 0.5); letter-spacing: 0.15em; }
-
         label { color: #4b5563; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
-        
-        input, select { 
-            background: #111827 !important; 
-            border: 1px solid #1f2937 !important; 
-            color: #d1d5db !important; 
-            padding: 12px !important; 
-            border-radius: 6px !important;
-            font-size: 0.9rem !important;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        input:focus { border-color: #3b82f6 !important; outline: none; }
-        
-        .btn-submit {
-            background-color: #2563eb;
-            color: white;
-            font-weight: 700;
-            padding: 16px;
-            border-radius: 6px;
-            width: 100%;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            font-size: 0.95rem;
-            margin-top: auto; /* 버튼을 항상 박스 맨 아래로 고정 */
-        }
-
-        /* 히스토리 내부 스크롤: 높이는 충분히 크게 유지 */
-        .scroll-area { 
-            height: 650px; /* 히스토리 높이 유지 */
-            overflow-y: auto; 
-        }
+        input, select { background: #111827 !important; border: 1px solid #1f2937 !important; color: #d1d5db !important; padding: 12px !important; border-radius: 6px !important; font-size: 0.9rem !important; width: 100%; margin-bottom: 20px; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+        .btn-submit { background-color: #2563eb; color: white; font-weight: 700; padding: 16px; border-radius: 6px; width: 100%; transition: all 0.2s; text-transform: uppercase; font-size: 0.95rem; margin-top: auto; }
+        .scroll-area { height: 650px; overflow-y: auto; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 10px; }
     </style>
@@ -151,7 +115,6 @@
     </header>
 
     <div class="content-container">
-        
         <aside class="w-[340px] shrink-0">
             <div class="card-box h-full flex flex-col border-t-2 border-t-blue-500/50">
                 <h2 class="text-xs font-black text-blue-300 font-orbitron uppercase tracking-widest mb-8">Entry</h2>
@@ -223,8 +186,6 @@
                 </div>
             </div>
         </main>
-
     </div>
-
 </body>
 </html>
