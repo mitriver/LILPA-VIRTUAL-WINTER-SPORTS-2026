@@ -24,7 +24,6 @@
         const db = getDatabase(app);
         const recordsRef = ref(db, 'records');
 
-        // 현재 선택된 팀 상태 (업데이트된 팀명 적용)
         let currentTeam = "만스터치";
 
         window.setTodayDate = function() {
@@ -136,10 +135,10 @@
     <nav class="tab-container max-w-[1600px] mx-auto">
         <button class="tab-btn active-tab" onclick="changeTab('만스터치', this)">만스터치</button>
         <button class="tab-btn inactive-tab" onclick="changeTab('아바타요', this)">아바타요</button>
-        <button class="tab-btn inactive-tab" onclick="changeTab('팀 고세구', this)">팀 고세구</button>
+        <button class="tab-btn inactive-tab" onclick="changeTab('빙신구', this)">빙신구</button>
         <button class="tab-btn inactive-tab" onclick="changeTab('메타작버스', this)">메타작버스</button>
-        <button class="tab-btn inactive-tab" onclick="changeTab('팀 머독', this)">팀 머독</button>
-        <button class="tab-btn inactive-tab" onclick="changeTab('아이스틸', this)">아이스틸</button>
+        <button class="tab-btn inactive-tab" onclick="changeTab('레드윙즈', this)">레드윙즈</button>
+        <button class="tab-btn inactive-tab" onclick="changeTab('꼭 따라이', this)">꼭 따라이</button>
     </nav>
 
     <div class="content-container">
